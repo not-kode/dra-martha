@@ -1,6 +1,4 @@
 .DS_Store
-
-# documentação interna: fica só no computador, nunca vai para o site
 *.md
 *.py
 *.yaml
