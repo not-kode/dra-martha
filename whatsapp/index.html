@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Abrindo o WhatsApp...</title>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 20px; background: #ffffff; color: #444;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    text-align: center; padding: 24px;
+  }
+  /* Nada aparece nos primeiros 500 ms: no caminho normal a pessoa já foi
+     embora antes disso e não chega a ver tela nenhuma, só um piscar branco. */
+  .spinner, p { opacity: 0; animation: surgir .2s ease-out .5s forwards; }
+  @keyframes surgir { to { opacity: 1; } }
+  .spinner {
+    width: 34px; height: 34px; border-radius: 50%;
+    border: 3px solid #e4e4e4; border-top-color: #25d366;
+    animation: girar .8s linear infinite, surgir .2s ease-out .5s forwards;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+  p { font-size: 15px; margin: 0; }
+  a.manual {
+    display: none; font-size: 15px; color: #128c7e; font-weight: 600;
+    text-decoration: none; border: 1px solid #128c7e; border-radius: 999px; padding: 10px 22px;
+  }
+  @media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+</style>
+</head>
+<body>
+
+<div class="spinner" aria-hidden="true"></div>
+<p>Abrindo a conversa no WhatsApp...</p>
+<a class="manual" id="manual" href="#">Continuar para o WhatsApp</a>
+
+<script>
+/* -------------------------------------------------------------------------
+   Página ponte: registra a conversão no Google Ads e no GA4 e manda a pessoa
+   para o WhatsApp. Não tem conteúdo próprio de propósito, ela existe só para
+   ser mensurável. O site do Canva aponta o botão de WhatsApp para cá.
+
+   Preencher antes de publicar:
+   ------------------------------------------------------------------------- */
+var CONFIG = {
+  ADS_ID:        "AW-17444309859",             // ID de conversão do Google Ads
+  ADS_LABEL:     "xRs3CKyd5uEcEOOWjP5A",       // label da conversão "whatsapp_site"
+  GA4_ID:        "G-M6490GK1S6",               // propriedade "Dra Martha Nardy". Vazio desliga o GA4.
+  TELEFONE:      "5511977196686",
+  MENSAGEM:      "Olá, vim através da página. Gostaria de marcar uma consulta para realizar a avaliação.",
+  ESPERA_MAXIMA: 800                           // ms que esperamos o Google confirmar antes de redirecionar assim mesmo
+};
+
+(function () {
+  "use strict";
+
+  var params = new URLSearchParams(location.search);
+
+  /* Origem do clique, para saber depois qual botão da página converte.
+     Ex.: /ir/whatsapp?de=topo  ou  /ir/whatsapp?de=rodape */
+  var origem = (params.get("de") || "site").slice(0, 40);
+
+  /* Permite sobrescrever a mensagem por link, sem republicar esta página. */
+  var mensagem = params.get("msg") || CONFIG.MENSAGEM;
+
+  var destino = "https://wa.me/" + CONFIG.TELEFONE + "?text=" + encodeURIComponent(mensagem);
+
+  var manual = document.getElementById("manual");
+  manual.href = destino;
+
+  /* Se em 3s ainda estivermos aqui (JS do Google bloqueado, rede ruim),
+     mostramos o link para a pessoa clicar na mão. Ninguém fica preso. */
+  setTimeout(function () { manual.style.display = "inline-block"; }, 3000);
+
+  var jaFoi = false;
+  function seguir() {
+    if (jaFoi) return;
+    jaFoi = true;
+    /* replace para o botão "voltar" não trazer a pessoa de volta para esta ponte */
+    location.replace(destino);
+  }
+
+  /* Rede de segurança: redireciona mesmo que o callback do Google nunca venha. */
+  var relogio = setTimeout(seguir, CONFIG.ESPERA_MAXIMA);
+
+  var temAds = CONFIG.ADS_ID.indexOf("X") === -1 && CONFIG.ADS_LABEL.indexOf("X") === -1;
+  var temGa4 = CONFIG.GA4_ID && CONFIG.GA4_ID.indexOf("X") === -1;
+
+  if (!temAds && !temGa4) { clearTimeout(relogio); seguir(); return; }
+
+  window.dataLayer = window.dataLayer || [];
+  function gtag() { dataLayer.push(arguments); }
+  gtag("js", new Date());
+
+  var tagId = temAds ? CONFIG.ADS_ID : CONFIG.GA4_ID;
+  var script = document.createElement("script");
+  script.async = true;
+  script.src = "https://www.googletagmanager.com/gtag/js?id=" + tagId;
+  /* Se o script não carregar, o relógio acima já cuida do redirecionamento. */
+  document.head.appendChild(script);
+
+  if (temAds) gtag("config", CONFIG.ADS_ID);
+  if (temGa4) gtag("config", CONFIG.GA4_ID);
+
+  if (temGa4) {
+    gtag("event", "clique_whatsapp", {
+      origem: origem,
+      send_to: CONFIG.GA4_ID
+    });
+  }
+
+  if (temAds) {
+    gtag("event", "conversion", {
+      send_to: CONFIG.ADS_ID + "/" + CONFIG.ADS_LABEL,
+      event_callback: function () { clearTimeout(relogio); seguir(); },
+      event_timeout: CONFIG.ESPERA_MAXIMA
+    });
+  }
+})();
+</script>
+
+<noscript>
+  <p>Toque no link abaixo para falar com a clínica.</p>
+  <p><a href="https://wa.me/5511977196686">Abrir o WhatsApp</a></p>
+</noscript>
+
+</body>
+</html>
